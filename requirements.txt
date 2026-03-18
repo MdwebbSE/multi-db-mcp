@@ -1,0 +1,8 @@
+# Multi-Database MCP Server Dependencies
+#
+# Required packages:
+pymysql>=1.1.0           # MySQL database driver
+mssql-python>=1.0.0      # MSSQL database driver
+starlette>=0.30.0        # ASGI framework
+mcp>=1.0.0               # Model Context Protocol
+uvicorn>=0.30.0          # ASGI server for running Starlette

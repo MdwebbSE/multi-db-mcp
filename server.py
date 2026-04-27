@@ -7,7 +7,7 @@ import contextlib
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse, Response
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
 from config import load_config, READ_ONLY, MAX_ROWS
@@ -44,12 +44,6 @@ async def health(_: Request) -> Response:
         }
     )
 
-
-async def index(_: Request) -> Response:
-    """Root endpoint."""
-    return PlainTextResponse("Multi-DB MCP server is running.")
-
-
 @contextlib.asynccontextmanager
 async def lifespan(app: Starlette):
     """Application lifespan handler."""
@@ -59,12 +53,21 @@ async def lifespan(app: Starlette):
     close_all_pools()
 
 
-app = Starlette(
+_starlette_app = Starlette(
     routes=[
-        Route("/", endpoint=index),
-        Route("/health", endpoint=health),
+        Route("/health", endpoint=health, methods=["GET"]),
         Mount("/", app=mcp.streamable_http_app()),
     ],
     middleware=[Middleware(BearerAuthMiddleware)],
     lifespan=lifespan,
 )
+
+_root_info = JSONResponse({"server_name": "multi-db", "server_version": "1.0.0", "status": "ok"})
+
+
+async def app(scope, receive, send):
+    """Top-level ASGI app: intercept GET / before Starlette routing."""
+    if scope["type"] == "http" and scope["path"] == "/" and scope["method"] == "GET":
+        await _root_info(scope, receive, send)
+    else:
+        await _starlette_app(scope, receive, send)

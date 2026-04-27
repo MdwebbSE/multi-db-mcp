@@ -19,15 +19,23 @@ from db import (
 
 def get_header_map(ctx: Context) -> dict[str, str]:
     """Extract headers from context."""
-    # FastMCP does not guarantee a request object on Context
-    request = getattr(ctx, "request", None)
+    # Streamable HTTP transport: ctx.request_context.request.headers
+    request_context = getattr(ctx, "request_context", None)
+    if request_context is not None:
+        request = getattr(request_context, "request", None)
+        if request is not None:
+            headers = getattr(request, "headers", None)
+            if headers:
+                return {k.lower(): v for k, v in headers.items()}
 
+    # Legacy: ctx.request
+    request = getattr(ctx, "request", None)
     if request is not None:
         headers = getattr(request, "headers", None)
         if headers:
             return {k.lower(): v for k, v in headers.items()}
 
-    # fallback if headers were attached differently
+    # Fallback: ctx.meta
     meta = getattr(ctx, "meta", None)
     if isinstance(meta, dict):
         headers = meta.get("headers")
